@@ -1289,6 +1289,13 @@ SDK默认开启断线重连，如果需要关闭则需要修改作[ClientConf](i
    其中`requestId`为命令下发时对应的请求id，result则是命令执行结果，0代表成功，其它代表失败。示例如下，
    ![img_7.png](doc/doc_cn/bridge_device_cmdresp.png)
 
-# 7.开源协议
+# 7.常见问题
+
+ - 建链返回：IoT.SDK.Device.Transport.Mqtt.MqttConnection.OnMqttClientConnectingFailed:282 - bad user name or password。
+   排查方法：
+   1. 查看DeviceId是否错误：在控制台界面查看设备，在界面中复制`设备ID` ，即为SDK中deviceId的值。
+   2. 确认密码是否正确：在设备创建时用户填入的`密钥` 即为SDK中DeviceSecret的值。若是忘记密码，可在设备详情页面重置密钥。
+
+# 8.开源协议
 
 - 遵循BSD-3开源许可协议
