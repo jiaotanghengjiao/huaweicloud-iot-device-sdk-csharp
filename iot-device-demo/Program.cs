@@ -55,6 +55,7 @@ namespace IoT.Device.Feature.Test
                 { "FileUploadDownload", new FileUploadDownloadSample() },
                 { "Message", new MessageReportReceiveSample() },
                 { "OTA", new OtaSample() },
+                { "ModuleOTA", new ModuleOTASample() },
                 { "PropertyGetAndSet", new PropertyGetAndSetSample() },
                 { "PropertyReport", new PropertyReportSample() },
                 { "TimeSync", new TimeSyncSample() },

@@ -61,6 +61,8 @@ namespace IoT.SDK.Device.OTA
 
         private OTAListener otaListener;
 
+        private ModuleOTAListener moduleOtaListener;
+
         public override string GetServiceId()
         {
             return "$ota";
@@ -76,23 +78,28 @@ namespace IoT.SDK.Device.OTA
         }
 
         /// <summary>
+        /// Sets an Module OTA listener.
+        /// </summary>
+        /// <param name="otaListener">Indicates the OTA listener to set.</param>
+        public void SetModuleOtaListener(ModuleOTAListener moduleOtaListener)
+        {
+            this.moduleOtaListener = moduleOtaListener;
+        }
+
+        /// <summary>
         /// Called when an OTA upgrade event is processed.
         /// </summary>
         /// <param name="deviceEvent">Indicates an event.</param>
         public override void OnEvent(DeviceEvent deviceEvent)
         {
-            if (otaListener == null)
-            {
-                Log.Info("otaListener is null");
-                return;
-            }
-
-            if (deviceEvent.eventType == "version_query")
+            
+            if (otaListener != null && deviceEvent.eventType == "version_query")
             {
                 OTAQueryInfo queryInfo = JsonUtil.ConvertDicToObject<OTAQueryInfo>(deviceEvent.paras);
                 otaListener.OnQueryVersion(queryInfo);
             }
-            else if (deviceEvent.eventType == "firmware_upgrade" || deviceEvent.eventType == "software_upgrade")
+            else if (otaListener != null &&
+                     (deviceEvent.eventType == "firmware_upgrade" || deviceEvent.eventType == "software_upgrade"))
             {
                 OTAPackage pkg = JsonUtil.ConvertDicToObject<OTAPackage>(deviceEvent.paras);
 
@@ -102,7 +109,9 @@ namespace IoT.SDK.Device.OTA
                     // to do Write code used to start the new thread.
                     otaListener.OnNewPackage(pkg);
                 }))).Start();
-            } else if (deviceEvent.eventType == "firmware_upgrade_v2" || deviceEvent.eventType == "software_upgrade_v2")
+            }
+            else if (otaListener != null && 
+                     deviceEvent.eventType == "firmware_upgrade_v2" || deviceEvent.eventType == "software_upgrade_v2")
             {
                 OTAPackageV2 pkgV2 = JsonUtil.ConvertDicToObject<OTAPackageV2>(deviceEvent.paras);
                 // A separate thread is started for the OTA upgrade.
@@ -112,7 +121,38 @@ namespace IoT.SDK.Device.OTA
                     otaListener.OnNewPackageV2(pkgV2);
                 }))).Start();
             }
+            else if (moduleOtaListener != null && deviceEvent.eventType == "module_version_report_response")
+            {
+                ModuleOTAReportInfo queryInfo = JsonUtil.ConvertDicToObject<ModuleOTAReportInfo>(deviceEvent.paras);
+                moduleOtaListener.OnQueryVersion(queryInfo, deviceEvent.eventId);
+            }
+            else if (moduleOtaListener != null && deviceEvent.eventType == "module_upgrade_notify")
+            {
+                ModuleOTAPackage pkg = JsonUtil.ConvertDicToObject<ModuleOTAPackage>(deviceEvent.paras);
+                // A separate thread is started for the OTA upgrade.
+                new Thread(new ThreadStart(new Action(() =>
+                {
+                    // to do Write code used to start the new thread.
+                    moduleOtaListener.OnNewPackage(pkg, deviceEvent.eventId);
+                }))).Start();
+            }
+            else if (moduleOtaListener != null && deviceEvent.eventType == "module_progress_report_response")
+            {
+                ModuleOTAReportInfo queryInfo = JsonUtil.ConvertDicToObject<ModuleOTAReportInfo>(deviceEvent.paras);
+                moduleOtaListener.onProgress(queryInfo, deviceEvent.eventId);
+            }
+            else if (moduleOtaListener != null && deviceEvent.eventType == "module_package_get_response")
+            {
+                ModuleOTAReportInfo queryInfo = JsonUtil.ConvertDicToObject<ModuleOTAReportInfo>(deviceEvent.paras);
+                ModuleOTAPackage pkg = JsonUtil.ConvertDicToObject<ModuleOTAPackage>(deviceEvent.paras);
+                new Thread(new ThreadStart(new Action(() =>
+                {
+                    // to do Write code used to start the new thread.
+                    moduleOtaListener.OnGetPackage(queryInfo, pkg, deviceEvent.eventId);
+                }))).Start();
+            }
         }
+
 
         /// <summary>
         /// Reports a firmware version.
@@ -121,7 +161,7 @@ namespace IoT.SDK.Device.OTA
         public void ReportVersion(string version)
         {
             Dictionary<string, object> node = new Dictionary<string, object>();
-            
+
             node.Add("fw_version", version);
             node.Add("sw_version", version);
 
@@ -160,6 +200,83 @@ namespace IoT.SDK.Device.OTA
             deviceEvent.eventTime = IotUtil.GetEventTime();
 
             iotDevice.GetClient().ReportEvent(deviceEvent);
-        }   
+        }
+
+
+        /// <summary>
+        /// Reports a firmware version.
+        /// </summary>
+        /// <param name="module">Module to which the device belongs.</param>
+        /// <param name="version">Indicates the firmware version.</param>
+        /// <param name="eventId">The unique identifier associated with this package retrieval event.
+        /// Used for tracking and correlating events on the IoT platform.</param>
+        public void ReportVersion(string module, string version, string eventId)
+        {
+            Dictionary<string, object> node = new Dictionary<string, object>();
+
+            node.Add("module", module);
+            node.Add("version", version);
+
+            DeviceEvent deviceEvent = new DeviceEvent();
+            deviceEvent.eventType = "module_version_report";
+            deviceEvent.paras = node;
+            deviceEvent.serviceId = "$ota";
+            deviceEvent.eventTime = IotUtil.GetEventTime();
+            deviceEvent.eventId = eventId;
+
+            iotDevice.GetClient().ReportEvent(deviceEvent);
+        }
+
+        /// <summary>
+        /// Reports the upgrade status.
+        /// </summary>
+        /// <param name="result">Indicates the upgrade result.</param>
+        /// <param name="progress">Indicates the upgrade progress, ranging from 0 to 100.</param>
+        /// <param name="module">Module to which the device belongs.</param>
+        /// <param name="eventId">The unique identifier associated with this package retrieval event.
+        /// Used for tracking and correlating events on the IoT platform.</param>
+        /// <param name="description">Indicates the description of the failure. It is optional.</param>
+        public void ReportOtaStatus(int result, int progress, string module, string eventId, string description)
+        {
+            Dictionary<string, object> node = new Dictionary<string, object>();
+            node.Add("result_code", -result);
+            node.Add("progress", progress);
+            if (description != null)
+            {
+                node.Add("description", description);
+            }
+
+            node.Add("module", module);
+
+            DeviceEvent deviceEvent = new DeviceEvent();
+            deviceEvent.eventType = "module_progress_report";
+            deviceEvent.paras = node;
+            deviceEvent.serviceId = "$ota";
+            deviceEvent.eventTime = IotUtil.GetEventTime();
+            deviceEvent.eventId = eventId;
+
+            iotDevice.GetClient().ReportEvent(deviceEvent);
+        }
+
+        /// <summary>
+        /// Proactively obtain upgrade packages.
+        /// </summary>
+        /// <param name="module">Module to which the device belongs.</param>
+        /// <param name="eventId">The unique identifier associated with this package retrieval event.
+        /// Used for tracking and correlating events on the IoT platform.</param>
+        public void ReportPackageGet(string module, string eventId)
+        {
+            Dictionary<string, object> node = new Dictionary<string, object>();
+            node.Add("module", module);
+
+            DeviceEvent deviceEvent = new DeviceEvent();
+            deviceEvent.eventType = "module_package_get";
+            deviceEvent.paras = node;
+            deviceEvent.serviceId = "$ota";
+            deviceEvent.eventTime = IotUtil.GetEventTime();
+            deviceEvent.eventId = eventId;
+
+            iotDevice.GetClient().ReportEvent(deviceEvent);
+        }
     }
 }

@@ -624,7 +624,7 @@ Gateway Demo implements a simple TCP subdevice simulator and a corresponding gat
     ```shell
        cd iot-tcp-device
        dotnet run --project .\iot-tcp-device.csproj localhost 8081 mySubDevice1
-   ```
+    ```
 
    The meanings of the next three parameters are:
 
@@ -645,7 +645,7 @@ Gateway Demo implements a simple TCP subdevice simulator and a corresponding gat
    In the console of the sub-device simulator, enter the content in the following format to report the properties:
     ```shell
    properties: smokeDetector, {"alarm":0,"temperature":10}
-   ```
+    ```
    Switch back to the gateway's log. If the report is successful, the following content will appear:
    ![](./doc/doc_cn/img_14.png)
 
@@ -653,7 +653,7 @@ Gateway Demo implements a simple TCP subdevice simulator and a corresponding gat
    When issuing commands to sub-devices according to the operation in [Device Command](#42-device-commands), you need to manually reply to the command response in the sub-device simulator. The format is as follows:
     ```shell
    cmdresp: requestId, result
-   ```
+    ```
    Among them, `requestId` is the corresponding request id when the command is issued, and result is the command execution result. 0 represents success, and others represent failure. Examples are as follows,
    ![](doc/doc_cn/gateway_cmdrsp_request_id.png)
 
@@ -1065,6 +1065,56 @@ If the default parameters are brought in, they are `1 + 2^(n-1)*0.8` and `1 + 2^
 - Connection failed 3 times: possible delay of 4.2 to 5.8 seconds
 - and so on
 
+## 4.18 Module Upgrade
+
+-  Demo Source Code: [ModuleOTASample.cs](iot-device-demo/CoreCapability/ModuleOTASample.cs)
+- Demo Name: ModuleOTA
+-  Reference Documentation:   [MQTT Device OTA Upgrade](https://support.huaweicloud.com/usermanual-iothub/iot_01_0047.html) ,
+   [MQTT Protocol Device OTA Firmware Upgrade](https://support.huaweicloud.com/bestpractice-iothub/iot_bp_0039.html) .
+
+ Module upgrade requires first uploading the module version and creating a task on the platform. The SDK will then receive the upgrade request and begin processing. The SDK can also actively pull the upgrade package. For detailed operations, please refer to [MQTT Protocol Device OTA Firmware Upgrade](https://support.huaweicloud.com/bestpractice-iothub/iot_bp_0039.html). By default, the files downloaded in the upgrade example will be uniformly downloaded to the `download` folder under the demo's running path. 
+
+![img_12.png](./doc/doc_cn/img_12.png)
+
+ If you need a highly customized processing flow, you need to implement the `ModuleOTAListener` to listen for module upgrade requests: 
+
+```csharp
+public interface ModuleOTAListener
+{
+    void OnQueryVersion(ModuleOTAReportInfo info, string eventId);
+    void OnNewPackage(ModuleOTAPackage pkg, string eventId);
+    void OnGetPackage(ModuleOTAReportInfo info, ModuleOTAPackage pkg, string eventId);
+    void onProgress(ModuleOTAReportInfo info, string eventId);
+}
+```
+
+ Then process the `url` in the request, and finally use the following interface to report the processing progress or result: 
+
+```csharp
+class OTAService {
+    ///.....
+    ReportOtaStatus(int result, int progress, string module, string eventId, string description)
+}
+```
+
+ After a successful upgrade, use the following interface to report the post-upgrade version: 
+
+```csharp
+class OTAService {
+    ///.....
+    ReportVersion(string module, string version, string eventId)
+}
+```
+
+ You can also actively pull upgrade package information using the following interface: 
+
+```csharp
+class OTAService {
+    ///.....
+    ReportPackageGet(string module, string eventId)
+}
+```
+
 # 5. Equipment distribution
 
 The device provisioning service is mainly used for the provision, access and migration of devices in multiple IoT platform instances. The device only needs to burn an address when it leaves the factory, and then use [policy](https://support.huaweicloud.com/usermanual-iotps/iot_01_0003.html) on the platform to control different devices to access different IoT platforms. After the device is powered on, it receives the new platform connection address issued by the device and directly connects to the new address, eliminating the need to burn device information twice. It also supports initialized device information synchronization. Currently, the issuance of two major device types is supported, with the following functions:
@@ -1248,7 +1298,7 @@ The following log appears indicating successful startup:
     ```shell
        cd iot-tcp-device
        dotnet run --project .\iot-tcp-device.csproj localhost 8081 myDeviceId myDeviceName
-   ```
+    ```
 
    The meanings of the next three parameters are:
 
@@ -1271,7 +1321,7 @@ The following log appears indicating successful startup:
    In the console of the device simulator, enter the content in the following format to report the properties:
     ```shell
    properties: smokeDetector, {"alarm":1,"temperature":11.2}
-   ```
+    ```
    Switch back to the gateway's log. If the report is successful, the following content will appear:
    ![img_5.png](doc/doc_cn/bridge_device_properties.png)
 
@@ -1279,7 +1329,7 @@ The following log appears indicating successful startup:
    When issuing commands to the device according to the operation in [Device Command](#42-device-commands), you need to manually reply to the command response in the device simulator. The format is as follows:
     ```shell
    cmdresp: requestId, result
-   ```
+    ```
    Among them, `requestId` is the corresponding request id when the command is issued, and result is the command execution result. 0 represents success, and others represent failure. Examples are as follows,
    ![img_7.png](doc/doc_cn/bridge_device_cmdresp.png)
 

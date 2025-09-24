@@ -630,7 +630,7 @@ Gateway Demo实现了一个简单TCP子设备模拟器、和一个对应的的�
     ```shell
        cd iot-tcp-device
        dotnet run --project .\iot-tcp-device.csproj localhost 8081 mySubDevice1
-   ```
+    ```
 
    后面三个参数含义分别是：
 
@@ -651,7 +651,7 @@ Gateway Demo实现了一个简单TCP子设备模拟器、和一个对应的的�
    在子设备模拟器的console，输入以下格式的内容上报属性：
     ```shell
    properties: smokeDetector, {"alarm":0,"temperature":10}
-   ```
+    ```
    切换回网关的日志，如果上报成功将会出现以下内容：
    ![](./doc/doc_cn/img_14.png)
 
@@ -659,7 +659,7 @@ Gateway Demo实现了一个简单TCP子设备模拟器、和一个对应的的�
    按照[设备命令](#42-设备命令)中操作向子设备下发命令时需要在子设备模拟器中手动回复命令响应，格式如下：
     ```shell
    cmdresp: requestId, result
-   ```
+    ```
    其中`requestId`为命令下发时对应的请求id，result则是命令执行结果，0代表成功，其它代表失败。示例如下，
    ![](doc/doc_cn/gateway_cmdrsp_request_id.png)
 
@@ -1071,6 +1071,56 @@ SDK默认开启断线重连，如果需要关闭则需要修改作[ClientConf](i
 - 连接失败3次：可能延时4.2到5.8秒
 - 以此类推
 
+## 4.18 模块升级
+
+- Demo源码：[ModuleOTASample.cs](iot-device-demo/CoreCapability/ModuleOTASample.cs)
+- Demo名称：ModuleOTA
+- 参考文档：[MQTT设备OTA升级](https://support.huaweicloud.com/usermanual-iothub/iot_01_0047.html),
+  [MQTT协议设备OTA固件升级](https://support.huaweicloud.com/bestpractice-iothub/iot_bp_0039.html)
+
+模块升级需要在平台先上传模块版本并创建任务，然后SDK会接收到升级请求并开始处理，也让可以SDK主动拉取升级包。详细操作可以参考[MQTT协议设备OTA固件升级](https://support.huaweicloud.com/bestpractice-iothub/iot_bp_0039.html)。默认情况下，升级示例中下载的文件将被统一下载到demo运行路径下的`download`文件夹中。
+
+![img_12.png](./doc/doc_cn/img_12.png)
+
+如果您需要高度自定义处理流程，您需要实现`ModuleOTAListener`以监听模块升级请求:
+
+```csharp
+public interface ModuleOTAListener
+{
+    void OnQueryVersion(ModuleOTAReportInfo info, string eventId);
+    void OnNewPackage(ModuleOTAPackage pkg, string eventId);
+    void OnGetPackage(ModuleOTAReportInfo info, ModuleOTAPackage pkg, string eventId);
+    void onProgress(ModuleOTAReportInfo info, string eventId);
+}
+```
+
+然后处理请求中的`url`，最后再使用下面接口上报处理进度或结果：
+
+```csharp
+class OTAService {
+    ///.....
+    ReportOtaStatus(int result, int progress, string module, string eventId, string description)
+}
+```
+
+升级成功后使用下面接口上报升级后版本：
+
+```csharp
+class OTAService {
+    ///.....
+    ReportVersion(string module, string version, string eventId)
+}
+```
+
+也可以通过下面接口主动拉取升级包信息：
+
+```csharp
+class OTAService {
+    ///.....
+    ReportPackageGet(string module, string eventId)
+}
+```
+
 # 5.设备发放
 
 设备发放服务主要用于设备在多个IoT平台实例的发放、接入和迁移。设备在出厂时只需要烧录一个地址，然后在平台上通过[策略](https://support.huaweicloud.com/usermanual-iotps/iot_01_0003.html)制不同的设备接入不同的IoT平台。 设备上电后收到设备发放下发的新的平台连接地址，直接连接新的地址，免去二次烧录设备信息，同时还支持初始化的设备信息同步。 目前支持两大种设备类型的发放，功能如下：
@@ -1254,7 +1304,7 @@ SDK默认开启断线重连，如果需要关闭则需要修改作[ClientConf](i
     ```shell
        cd iot-tcp-device
        dotnet run --project .\iot-tcp-device.csproj localhost 8081 myDeviceId myDeviceName
-   ```
+    ```
 
    后面三个参数含义分别是：
 
@@ -1277,7 +1327,7 @@ SDK默认开启断线重连，如果需要关闭则需要修改作[ClientConf](i
    在设备模拟器的console，输入以下格式的内容上报属性：
     ```shell
    properties: smokeDetector, {"alarm":1,"temperature":11.2}
-   ```
+    ```
    切换回网关的日志，如果上报成功将会出现以下内容：
    ![img_5.png](doc/doc_cn/bridge_device_properties.png)
 
@@ -1285,7 +1335,7 @@ SDK默认开启断线重连，如果需要关闭则需要修改作[ClientConf](i
    按照[设备命令](#42-设备命令)中操作向设备下发命令时需要在设备模拟器中手动回复命令响应，格式如下：
     ```shell
    cmdresp: requestId, result
-   ```
+    ```
    其中`requestId`为命令下发时对应的请求id，result则是命令执行结果，0代表成功，其它代表失败。示例如下，
    ![img_7.png](doc/doc_cn/bridge_device_cmdresp.png)
 
